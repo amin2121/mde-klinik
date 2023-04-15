@@ -5,7 +5,7 @@ class Retur_penjualan extends CI_Controller {
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->model('M_retur_penjualan', 'model');
+		$this->load->model('apotek/M_retur_penjualan', 'model');
 	}
 
 	public function index()
@@ -16,11 +16,29 @@ class Retur_penjualan extends CI_Controller {
 
 		$data['title'] = 'Retur Penjualan';
 		$data['menu'] = 'apotek';
-		$data['cabang'] = $this->model->get_cabang();
 
 		$this->load->view('admin/apotek/retur_penjualan', $data);
 	}
 
+	public function get_penjualan()
+	{
+		$no_transaksi = $this->input->post('no_transaksi');
+		$data = $this->model->get_penjualan($no_transaksi);
+		echo json_encode(['data' => $data]);
+	}
+
+	public function get_penjualan_detail()
+	{
+		$id = $this->input->post('id');
+		$data = $this->model->get_penjualan_detail($id);
+		echo json_encode(['data' => $data]);
+	}
+
+	public function get_barang()
+	{
+		$data = $this->model->get_barang();
+		echo json_encode(['data' => $data]);
+	}
 }
 
 /* End of file Retur_penjualan.php */
