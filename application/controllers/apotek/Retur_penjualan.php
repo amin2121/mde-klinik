@@ -36,7 +36,8 @@ class Retur_penjualan extends CI_Controller {
 
 	public function get_barang()
 	{
-		$data = $this->model->get_barang();
+		$search = $this->input->post('search');
+		$data = $this->model->get_barang($search);
 		echo json_encode(['data' => $data]);
 	}
 }

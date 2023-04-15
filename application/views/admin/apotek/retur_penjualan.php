@@ -42,7 +42,7 @@
 								<span class="input-group-btn">
 									<button class="btn bg-primary" type="button" onclick="tampil_modal_penjualan();"><i class="fa fa-search"></i></button>
 								</span>
-								<input type="text" class="form-control" autocomplete="off" placeholder="Cari Nota Penjualan" readonly="">
+								<input type="text" class="form-control" autocomplete="off" placeholder="Cari Nota Penjualan" readonly="" id="search-nota-penjualan">
 							</div>
 						</div>
 						<br>
@@ -106,7 +106,7 @@
 									<div class="modal-body">
 										<div class="form-group">
 											<div class="input-group">
-												<input type="text" class="form-control" autocomplete="off" id="cari_barang_modal" onkeyup="get_barang()" placeholder="cari barang berdasarkan nama / kode barang">
+												<input type="text" class="form-control" autocomplete="off" id="search-barang" onkeyup="get_barang()" placeholder="cari barang berdasarkan nama / kode barang">
 												<span class="input-group-btn">
 													<button class="btn bg-primary" type="button" onclick="get_barang()"><i class="fa fa-search"></i></button>
 												</span>
@@ -162,13 +162,15 @@
 										<tr>
 											<td class="text-center"><button class="btn btn-info btn-sm" onclick="tambah_row_barang()" type="button">Tambah Barang</button></td>
 											<td colspan="2" class="text-right"><b>Total :</b> </td>
-											<td class="text-right"><b id="total-transaksi"></b></td>
+											<td class="text-right"><b id="total-transaksi-retur"></b></td>
 										</tr>
 									</tfoot>
 								</table>
 								<br>
 							</div>
 							<br><br>
+
+							<input type="hidden" class="form-control" readonly id="input-nilai-laba-retur" name="nilai_laba_retur">
 
 							<div class="form-group">
 								<label class="control-label col-lg-2">Nilai Transaksi</label>
@@ -177,7 +179,7 @@
 										<span class="input-group-btn">
 											<button class="btn btn-success btn-icon" type="button">Rp</button>
 										</span>
-										<input type="text" class="form-control" readonly id="input-nilai-transaksi" name="nilai_transaksi">
+										<input type="text" class="form-control" readonly id="input-nilai-transaksi-retur" name="nilai_transaksi_retur">
 									</div>
 								</div>
 							</div>
@@ -256,7 +258,7 @@
 					let i = 0;
 					for(const item of res.data) {
 						row += `
-							<tr onclick="select_nota(${item.id}, '${item.nilai_transaksi}')" style="cursor: pointer">
+							<tr onclick="select_nota(${item.id}, '${item.nilai_transaksi}', '${item.no_transaksi}')" style="cursor: pointer">
 								<td class="text-center">${++i}</td>
 								<td class="text-center">${item.no_transaksi}</td>
 								<td class="text-center">Rp. ${NumberToMoney(item.nilai_transaksi)}</td>
@@ -309,8 +311,10 @@
         });
     }
 
-	function select_nota(id, nilai_transaksi) {
+	function select_nota(id, nilai_transaksi, no_transaksi) {
 		let count_col = $(`#table_barang thead tr th`).length
+		let num = $(`#input-num`).val()
+		$(`#search-nota-penjualan`).val(no_transaksi)
 
 		$.ajax({
 			url : '<?= base_url('apotek/retur_penjualan/get_penjualan_detail') ?>',
@@ -322,9 +326,14 @@
 			},
 			success : (res) => {
 				let row = '';
+				let subtotal = 0
+				let total_laba = 0
+
 				if(res.data.length > 0) {
 					let i = 0;
 					for(const item of res.data) {
+						num = parseInt(num) + 1
+
 						row += `
 						<tr class="tr_barang_${id}">
 							<td class="text-center">
@@ -333,16 +342,23 @@
 								<input type="hidden" name="nama_barang[]" value="${item.nama_barang}">
 								<input type="hidden" name="kode_barang[]" value="${item.kode_barang}">
 								<input type="hidden" name="jumlah_beli[]" value="${item.jumlah_beli}">
-								<input type="hidden" name="harga_jual[]" value="${item.harga_jual}" class="harga-jual">
+								<input type="hidden" name="laba[]" value="${item.laba}">
+								<input type="hidden" name="laba_total[]" value="${item.total_laba}" id="input-laba-total-${num}">
+								<input type="hidden" name="harga_jual[]" value="${item.harga_jual}">
+								<input type="hidden" name="harga_jual_total[]" value="${item.subtotal}" class="harga-jual-total" id="input-harga-jual-total-${num}">
+								
 							</td>
 							<td class="text-center">${item.nama_barang}</td>
 							<td class="text-center">${item.jumlah_beli}</td>
 							<td class="text-right">Rp. ${NumberToMoney(item.harga_jual)}</td>
 							<td class="text-center">
-								<button class="btn btn-danger" onclick="hapus_row(this)"><i class="icon-trash"></i></button>
+								<button class="btn btn-danger" onclick="hapus_row(this, ${num})"><i class="icon-trash"></i></button>
 							</td>
 						</tr>
 						`
+
+						subtotal += parseInt(item.subtotal)
+						total_laba += parseInt(item.total_laba)
 					}
 				} else {
 					row += `
@@ -351,13 +367,20 @@
 				}
 
 				$(`#table_barang tbody`).html(row);
-				$(`#total-transaksi`).html(`Rp. ${NumberToMoney(nilai_transaksi)}`)
+				$(`#input-nilai-transaksi-retur`).val(NumberToMoney(subtotal))
+				$(`#input-nilai-laba-retur`).val(total_laba)
+				$(`#total-transaksi-retur`).html('Rp. ' + NumberToMoney(subtotal))
+				$(`#input-num`).val(num)
 				paging();
+
+				console.log(subtotal, total_laba)
+
+				
 			}
 		})
 
 		$(`#btn_simpan`).prop('disabled', false);
-		$(``)
+		$(`#modal_tampil_penjualan`).modal('toggle');
 	}
 
 	function tambah_row_barang() {
@@ -366,6 +389,8 @@
 		let row = 	`<tr id="tr-barang-${num}">
 						<td class="text-center">
 							<input type="hidden" name="id_barang[]" id="input-id-barang-${num}">
+							<input type="hidden" name="laba[]" id="input-laba-satuan-${num}">
+							<input type="hidden" name="laba_total[]" id="input-laba-total-${num}" class="laba-total">
 							<div class="form-group">
 								<input type="text" class="form-control text-center" name="kode_barang[]" id="input-kode-barang-${num}" readonly>
 							</div>
@@ -374,7 +399,7 @@
 							<div class="form-group">
 								<div class="input-group">
 									<span class="input-group-btn">
-										<button class="btn btn-success btn-icon" type="button" onclick="get_barang(${num})"><i class=" icon-search4"></i></button>
+										<button class="btn btn-success btn-icon" type="button" onclick="tampil_modal_barang(${num})"><i class=" icon-search4"></i></button>
 									</span>
 									<input type="text" name="nama_barang[]" class="form-control" placeholder="Cari Barang Anda.." readonly id="input-nama-barang-${num}">
 								</div>
@@ -382,16 +407,16 @@
 						</td>
 						<td class="text-center">
 							<div class="form-group">
-								<input type="text" class="form-control" name="jumlah_beli[]" id="input-jumlah-beli-${num}" onkeyup="hitung_transaksi(${num})" value='1'>
+								<input type="text" class="form-control text-center" name="jumlah_beli[]" id="input-jumlah-beli-${num}" onkeyup="hitung_transaksi(${num})" value='1'>
 							</div>
 						</td>
 						<td class="text-right">
 							<span id="span-harga-jual-${num}"></span>
-							<input type="hidden" class="form-control harga-jual" name="harga_jual[]" id="input-harga-jual-${num}" readonly>
-							<input type="hidden" class="form-control" name="harga_jual_satuan[]" id="input-harga-jual-satuan-${num}" readonly>
+							<input type="hidden" class="form-control" name="harga_jual[]" id="input-harga-jual-${num}" readonly>
+							<input type="hidden" class="form-control harga-jual-total" name="harga_jual_total[]" id="input-harga-jual-total-${num}" readonly>
 						</td>
 						<td class="text-center">
-							<button class="btn btn-danger" onclick="hapus_row(this)"><i class="icon-trash"></i></button>
+							<button class="btn btn-danger" onclick="hapus_row(this, ${num})"><i class="icon-trash"></i></button>
 						</td>
 					</tr>
 		`
@@ -400,12 +425,18 @@
 		$(`#input-num`).val(num)
 	}
 
+	function tampil_modal_barang(num) {
+		$(`#modal_tampil_barang`).modal('toggle');
+		get_barang(num)
+	}
+
 	function get_barang(num) {
 		let count_col = $(`#table_barang_modal thead tr th`).length
-		$(`#modal_tampil_barang`).modal('toggle');
+		let search = $(`#search-barang`).val()
 
 		$.ajax({
 			url : '<?= base_url('apotek/retur_penjualan/get_barang') ?>',
+			data: {search},
 			method : 'POST',
 			dataType : 'json',
 			beforeSend : () => {
@@ -417,7 +448,7 @@
 					let i = 0;
 					for(const item of res.data) {
 						row += `
-						<tr onclick="tambah_barang(${num}, ${item.id}, '${item.kode_barang}', '${item.nama_barang}', '${item.harga_jual}')" style="cursor: pointer;">
+						<tr onclick="tambah_barang(${num}, ${item.id}, '${item.kode_barang}', '${item.nama_barang}', '${item.harga_jual}', '${item.laba}')" style="cursor: pointer;">
 							<td class="text-center">${++i}</td>
 							<td class="text-center">${item.kode_barang}</td>
 							<td class="text-center">${item.nama_barang}</td>
@@ -469,55 +500,94 @@
         });
     }
 
-	function tambah_barang(num, id, kode_barang, nama_barang, harga_jual) {
+	function tambah_barang(num, id, kode_barang, nama_barang, harga_jual, laba) {
 		$(`#input-id-barang-${num}`).val(id)
 		$(`#input-kode-barang-${num}`).val(kode_barang)
 		$(`#input-nama-barang-${num}`).val(nama_barang)
 		$(`#input-harga-jual-${num}`).val(harga_jual)
 		$(`#span-harga-jual-${num}`).html('Rp. ' + NumberToMoney(harga_jual))
-		$(`#input-harga-jual-satuan-${num}`).val(harga_jual)
+		$(`#input-harga-jual-total-${num}`).val(harga_jual)
+		$(`#input-laba-satuan-${num}`).val(laba)
+		$(`#input-laba-total-${num}`).val(laba)
 
 		$(`#modal_tampil_barang`).modal('toggle');
 
 		// MENGHITUNG TOTAL HARGA JUAL
 		let total_harga_jual = 0
-		$(`.harga-jual`).each((id, element) => {
+		$(`.harga-jual-total`).each((id, element) => {
 			let value = element.value
 			total_harga_jual += parseInt(value) 
 		})
 
-		$(`#input-nilai-transaksi`).val(NumberToMoney(total_harga_jual))
-		$(`#total-transaksi`).html('Rp. ' + NumberToMoney(total_harga_jual))
+		$(`#input-nilai-transaksi-retur`).val(NumberToMoney(total_harga_jual))
+		$(`#total-transaksi-retur`).html('Rp. ' + NumberToMoney(total_harga_jual))
+
+		// MENGHITUNG TOTAL LABA
+		let total_laba = 0
+		$(`.laba-total`).each((id, element) => {
+			let value = element.value
+			total_laba += parseInt(value) 
+		})
+
+		$(`#input-nilai-laba-retur`).val(total_laba)
 	}
 
 	function hitung_transaksi(num) {
 		let jumlah_beli = $(`#input-jumlah-beli-${num}`).val() == '' ? 0 : $(`#input-jumlah-beli-${num}`).val()
-		let harga_jual = $(`#input-harga-jual-satuan-${num}`).val()
+		let harga_jual = $(`#input-harga-jual-${num}`).val()
+		let laba = $(`#input-laba-${num}`).val()
 		let total_harga_jual = 0
 
-		let total_harga_jual_satuan = parseInt(jumlah_beli) * parseInt(harga_jual)
-		$(`#input-harga-jual-${num}`).val(total_harga_jual_satuan)
-		$(`#span-harga-jual-${num}`).html('Rp. ' + NumberToMoney(total_harga_jual_satuan))
+		let total_harga_jual_barang = parseInt(jumlah_beli) * parseInt(harga_jual)
+		$(`#input-harga-jual-total-${num}`).val(total_harga_jual_barang)
+		$(`#span-harga-jual-${num}`).html('Rp. ' + NumberToMoney(total_harga_jual_barang))
+
+		let total_laba_satuan = parseInt(jumlah_beli) * parseInt(laba)
+		$(`#input-laba-total-${num}`).val(total_laba_satuan)
 
 		// MENGHITUNG TOTAL HARGA JUAL
-		$(`.harga-jual`).each((id, element) => {
+		$(`.harga-jual-total`).each((id, element) => {
 			let value = element.value
 			total_harga_jual += parseInt(value) 
 		})
 
-		$(`#input-nilai-transaksi`).val(NumberToMoney(total_harga_jual))
-		$(`#total-transaksi`).html('Rp. ' + NumberToMoney(total_harga_jual))
+		$(`#input-nilai-transaksi-retur`).val(NumberToMoney(total_harga_jual))
+		$(`#total-transaksi-retur`).html('Rp. ' + NumberToMoney(total_harga_jual))
+
+		// MENGHITUNG TOTAL LABA
+		let total_laba = 0
+		$(`.laba-total`).each((id, element) => {
+			let value = element.value
+			total_laba += parseInt(value) 
+		})
+
+		$(`#input-nilai-laba-retur`).val(total_laba)
 	}
 
 	function hitung_kembalian() {
-		let nilai_transaksi = $(`#input-nilai-transaksi`).val().split(',').join('')
+		let nilai_transaksi = $(`#input-nilai-transaksi-retur`).val().split(',').join('')
 		let dibayar = $(`#input-dibayar`).val().split(',').join('')
 
 		let kembali = parseInt(dibayar) - parseInt(nilai_transaksi)
 		$(`#input-kembali`).val(NumberToMoney(kembali))
 	}
 
-	function hapus_row(btn, num = null) {
+	function hapus_row(btn, num) {
+		// PENGURANGAN NILAI TRANSAKSI
+		let nilai_transaksi = $(`#input-nilai-transaksi-retur`).val().split(',').join('')
+		let harga_jual_total = $(`#input-harga-jual-total-${num}`).val()
+		let pengurangan_nilai_transaksi = parseInt(nilai_transaksi) - parseInt(harga_jual_total)
+		$(`#input-nilai-transaksi-retur`).val(NumberToMoney(pengurangan_nilai_transaksi))
+		$(`#total-transaksi-retur`).html('Rp. ' + NumberToMoney(pengurangan_nilai_transaksi))
+		
+		// PENGURANGAN LABA
+		let laba_total = $(`#input-laba-total-${num}`).val()
+		let nilai_laba = $(`#input-nilai-laba-retur`).val().split(',').join('')
+		let pengurangan_nilai_laba = parseInt(nilai_laba) - parseInt(laba_total)
+		$(`#input-nilai-laba-retur`).val(NumberToMoney(pengurangan_nilai_laba))
+		
+		console.log(nilai_transaksi, harga_jual_total, laba_total, nilai_laba, pengurangan_nilai_transaksi, pengurangan_nilai_laba)
+		
 		let row = btn.parentNode.parentNode;
  		row.parentNode.removeChild(row);
 
@@ -530,6 +600,7 @@
 		if(jumlah_row_barang == 0) {
 			$(`#btn_simpan`).prop('disabled', true);
 		}
+		
 	}
 
 </script>
